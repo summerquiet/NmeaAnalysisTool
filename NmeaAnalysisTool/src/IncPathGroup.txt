@@ -1,0 +1,4 @@
+/I "."
+/I ".\NmeaDecode\include"
+
+/I "..\..\antsupporter\src\antlib\include"

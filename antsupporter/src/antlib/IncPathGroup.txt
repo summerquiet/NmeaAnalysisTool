@@ -1,0 +1,18 @@
+/I "."
+/I ".\include"
+
+/I ".\common
+/I ".\error"
+/I ".\file"
+/I ".\log"
+/I ".\math"
+/I ".\memory"
+/I ".\socket"
+/I ".\standard"
+/I ".\string"
+/I ".\thread"
+/I ".\utility"
+
+/I "..\3rdParty\zeromq\include"
+
+/D ANTLIB_EXPORTS

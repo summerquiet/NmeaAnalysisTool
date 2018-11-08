@@ -1,0 +1,28 @@
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "antlib", "antsupporter\src\antlib\antlib.vcproj", "{036D62B8-97D0-4F98-AB67-0C1C75C076B4}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NmeaAnalysisTool", "NmeaAnalysisTool\src\NmeaAnalysisTool.vcproj", "{3DF972F9-3F47-4CE0-8EB8-E39A1A4EF367}"
+	ProjectSection(ProjectDependencies) = postProject
+		{036D62B8-97D0-4F98-AB67-0C1C75C076B4} = {036D62B8-97D0-4F98-AB67-0C1C75C076B4}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{036D62B8-97D0-4F98-AB67-0C1C75C076B4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{036D62B8-97D0-4F98-AB67-0C1C75C076B4}.Debug|Win32.Build.0 = Debug|Win32
+		{036D62B8-97D0-4F98-AB67-0C1C75C076B4}.Release|Win32.ActiveCfg = Release|Win32
+		{036D62B8-97D0-4F98-AB67-0C1C75C076B4}.Release|Win32.Build.0 = Release|Win32
+		{3DF972F9-3F47-4CE0-8EB8-E39A1A4EF367}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3DF972F9-3F47-4CE0-8EB8-E39A1A4EF367}.Debug|Win32.Build.0 = Debug|Win32
+		{3DF972F9-3F47-4CE0-8EB8-E39A1A4EF367}.Release|Win32.ActiveCfg = Release|Win32
+		{3DF972F9-3F47-4CE0-8EB8-E39A1A4EF367}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

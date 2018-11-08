@@ -1,0 +1,77 @@
+SET(PRIVATE_MAIN_INC_LIST
+	"${USER_CONF_LIB_SRC_DIR}"
+    "${USER_CONF_LIB_SRC_DIR}/Socket"
+    "${USER_CONF_LIB_SRC_DIR}/Thread"
+    "${USER_CONF_LIB_SRC_DIR}/../../antsupporter/src/antlib/include"
+    "${USER_CONF_LIB_SRC_DIR}/../../algorithmlib/src/sort"
+    "${USER_CONF_LIB_SRC_DIR}/../../algorithmlib/src/str"
+    )
+
+FILE(GLOB_RECURSE PRIVATE_MAIN_SRC_LIST
+	"${USER_CONF_LIB_SRC_DIR}/*.cpp"
+	"${USER_CONF_LIB_SRC_DIR}/*.c"
+    "${USER_CONF_LIB_SRC_DIR}/Socket/*.cpp"
+	"${USER_CONF_LIB_SRC_DIR}/Socket/*.c"
+    "${USER_CONF_LIB_SRC_DIR}/Thread/*.cpp"
+	"${USER_CONF_LIB_SRC_DIR}/Thread/*.c")
+
+FOREACH(item ${PRIVATE_MAIN_SRC_LIST})
+  IF(${item} MATCHES "/test/")
+    LIST(REMOVE_ITEM PRIVATE_MAIN_SRC_LIST ${item})
+  ENDIF()
+ENDFOREACH()
+
+#--------------------------------MAIN--------------------------------#
+SET(PRIVATE_MODULE_NAME main)
+PROJECT (${PRIVATE_MODULE_NAME}) 
+
+#Clear the private var
+g_func_clear_private_var()
+
+#Set build flags and link libs
+SET(PRIVATE_MODULE_TYPE "EXECUTABLE")
+
+SET(PRIVATE_MODULE_C_FLAGS ${NAVI_GLOBAL_CFLAGS})
+SET(PRIVATE_MODULE_CXX_FLAGS ${NAVI_GLOBAL_CPPFLAGS})
+
+IF(APPLE)
+    SET(PRIVATE_MODULE_LINK_FLAGS
+        -lpthread
+        -ldl
+        )
+ELSE(APPLE)
+    SET(PRIVATE_MODULE_LINK_FLAGS
+        -lpthread
+        -lrt
+        -ldl
+        )
+ENDIF(APPLE)
+
+SET(PRIVATE_MODULE_LINK_STATIC_LIBRARIES)
+SET(PRIVATE_MODULE_LINK_SHARED_LIBRARIES
+    "libantlib-ant"
+    "libalgorithmlib-ant")
+
+SET(PRIVATE_MODULE_INC_LIST
+    ${PRIVATE_MAIN_INC_LIST}
+    )
+
+SET(PRIVATE_MODULE_SRC_LIST
+    ${PRIVATE_MAIN_SRC_LIST}
+    )
+
+#add headfiles
+add_headfiles_to_srclist_by_dir(
+    PRIVATE_MODULE_SRC_LIST 
+    PRIVATE_MODULE_INC_LIST
+	USER_CONF_LIB_SRC_DIR
+    )
+
+#add source group
+source_group_by_dir(
+    PRIVATE_MODULE_SRC_LIST
+    USER_CONF_LIB_SRC_DIR
+    )
+
+#Build this module
+g_func_build_module()

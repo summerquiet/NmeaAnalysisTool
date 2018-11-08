@@ -1,0 +1,16 @@
+set (CMAKE_COLOR_MAKEFILE On)
+set (CMAKE_MACOSX_RPATH Off)
+
+if (USER_CONF_PLATFORM_INCLUDES_FILE)
+   include (${USER_CONF_PLATFORM_INCLUDES_FILE})
+endif()
+
+# it's the default for Apple linker
+if (NOT APPLE)
+    SET(USER_CONF_GLOBAL_LINKER_FLAGS "${USER_CONF_GLOBAL_LINKER_FLAGS} -Wl,--no-undefined")
+endif ()
+
+#set the proto file include path
+include_directories (${USER_CONF_PROTOBUF_OUT_DIR} ${NAVI_GLOBAL_INCLUDE_PATH})
+
+link_directories (${EXTERNAL_SHARED_LIB_PATH})

@@ -1,0 +1,41 @@
+SET(PRIVATE_MODULE_NAME libtinyxml-ant)
+
+PROJECT (${PRIVATE_MODULE_NAME}) 
+
+#Clear the private var
+g_func_clear_private_var()
+
+#Set build flags and link libs
+SET(PRIVATE_MODULE_TYPE "SHARED")
+SET(PRIVATE_MODULE_C_FLAGS ${NAVI_GLOBAL_CFLAGS} "-D_GLIBCXX_PERMIT_BACKWARD_HASH")
+SET(PRIVATE_MODULE_CXX_FLAGS ${NAVI_GLOBAL_CPPFLAGS} " ")
+IF(APPLE)
+    SET(PRIVATE_MODULE_LINK_FLAGS
+        -lpthread
+        )
+ELSE(APPLE)
+    SET(PRIVATE_MODULE_LINK_FLAGS
+        -lpthread
+        -lrt
+        )
+ENDIF(APPLE)
+SET(PRIVATE_MODULE_LINK_STATIC_LIBRARIES " ")
+SET(PRIVATE_MODULE_LINK_SHARED_LIBRARIES " ")
+
+SET(PRIVATE_MODULE_INC_LIST
+        "${USER_CONF_LIB_SRC_DIR}/3rdParty/tinyxml/publicinc")
+
+SET(PRIVATE_MODULE_SRC_LIST
+        "${USER_CONF_LIB_SRC_DIR}/3rdParty/tinyxml/xml_util.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/3rdParty/tinyxml/tokenlist.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/3rdParty/tinyxml/tinyxmlparser.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/3rdParty/tinyxml/tinyxmlerror.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/3rdParty/tinyxml/tinyxml.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/3rdParty/tinyxml/tinystr.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/3rdParty/tinyxml/node_set.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/3rdParty/tinyxml/lex_util.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/3rdParty/tinyxml/htmlutil.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/3rdParty/tinyxml/action_store.cpp")
+
+#Build this module
+g_func_build_module()

@@ -1,0 +1,41 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "C++ Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": true,
+            "linux": {
+                "program": "${workspaceFolder}/out/target/linux/bin/main",
+                "MIMode": "gdb",
+                "setupCommands": [{
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }]
+            },
+            "osx": {
+                "program": "${workspaceFolder}/out/target/mac/bin/main",
+                "MIMode": "lldb",
+            },
+            "windows": {
+                "program": "${workspaceFolder}/out/target/Win32/bin/main.exe",
+                "MIMode": "gdb",
+                "miDebuggerPath": "E:/mingw64/bin/gdb.exe",
+                "setupCommands": [{
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }]
+            }
+        }
+    ]
+}

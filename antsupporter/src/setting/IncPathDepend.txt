@@ -1,0 +1,10 @@
+/I "..\3rdParty\boost"
+/I "..\3rdParty\inc_winbase"
+
+/I "..\antlib\include"
+/I "..\memorytracker\include"
+
+/I "..\spatialite\extern\publicinc"
+/I "..\tinyxml\extern\publicinc"
+
+/I "..\protobuf\3rd\publicinc"

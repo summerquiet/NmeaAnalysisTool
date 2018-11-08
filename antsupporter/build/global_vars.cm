@@ -1,0 +1,76 @@
+#
+# Convert relative path in CFLAGS/CXXFLAGS into absolute path, since cmake and
+# subsequent make will run in different diretory than the initial make command
+# and will result in error.
+#
+g_func_normalize_compiler_flags (USER_CONF_GLOBAL_C_FLAGS)
+g_func_normalize_compiler_flags (USER_CONF_GLOBAL_CXX_FLAGS)
+
+SET(NAVI_GLOBAL_CFLAGS ${USER_CONF_GLOBAL_C_FLAGS}
+    "-DCOMP_OPT_LITTLE_ENDIAN"
+    "-D_GLIBCXX_PERMIT_BACKWARD_HASH"
+    "-D__USES_INITFINI__"
+    "-DCOMP_OPT_USE_CURL"
+    "-DBOOST_ERROR_CODE_HEADER_ONLY"
+    "-DBOOST_SYSTEM_NO_DEPRECATED")
+
+IF(USER_CONF_TARGET_PRODUCT MATCHES "android")
+
+ELSEIF(USER_CONF_TARGET_PRODUCT MATCHES "iOS_DDN")
+    SET(NAVI_GLOBAL_CFLAGS ${NAVI_GLOBAL_CFLAGS}
+        "-DNDEBUG"
+        "-DCOMP_OPT_USE_CURL"
+        "-D_FOR_APPLE_"
+        "-D_FOR_IPHONE_"
+        "-D_FOR_IPHONE_DDN_")
+ELSE()
+    SET(NAVI_GLOBAL_CFLAGS ${NAVI_GLOBAL_CFLAGS}
+        "-DCOMP_OPT_USE_CURL")
+ENDIF()
+
+if (MSVC)
+    SET(NAVI_GLOBAL_CPPFLAGS ${NAVI_GLOBAL_CPPFLAGS} )
+    SET(NAVI_GLOBAL_CPPFLAGS ${USER_CONF_GLOBAL_CXX_FLAGS}
+        # char is signed by default (without option '/J')
+        /EHsc
+        /GR
+        )
+else ()
+    SET(NAVI_GLOBAL_CPPFLAGS ${NAVI_GLOBAL_CPPFLAGS} )
+    SET(NAVI_GLOBAL_CPPFLAGS ${USER_CONF_GLOBAL_CXX_FLAGS}
+        -fsigned-char
+        -fexceptions
+        -frtti
+        )
+endif ()
+
+SET(NAVI_LIB_OUTPUT_PATH ${USER_CONF_LIBRARY_OUTPUT_PATH})
+SET(NAVI_STATIC_LIB_OUTPUT_PATH ${USER_CONF_LIBRARY_OUTPUT_PATH}/static)
+SET(NAVI_SHARED_LIB_OUTPUT_PATH ${USER_CONF_LIBRARY_OUTPUT_PATH}/lib)
+SET(NAVI_BIN_OUTPUT_PATH ${USER_CONF_LIBRARY_OUTPUT_PATH}/bin)
+
+SET(NAVI_GLOBAL_DEP_EXTERNAL_MODULES )
+SET(NAVI_GLOBAL_ADDITIONAL_DEPENDENCIES )
+
+SET(EXTERNAL_STATIC_LIB_PATH ${USER_CONF_EXTERNAL_MODULES_OUTPUT_DIR}/static)
+SET(EXTERNAL_SHARED_LIB_PATH ${USER_CONF_EXTERNAL_MODULES_OUTPUT_DIR}/lib)
+
+if (${USER_CONF_TARGET_CPU_VENDOR_MODEL} MATCHES .*M2W.*)
+set(LIBZ_INC "vendor/renesas/zlib/M2W/usr/include/")
+endif()
+
+# libz for renesas E2
+if (${USER_CONF_TARGET_CPU_VENDOR_MODEL} MATCHES .*E2.*)
+set(LIBZ_INC "vendor/renesas/zlib/E2/usr/include/")
+endif()
+
+# libz for renesas M2N
+if (${USER_CONF_TARGET_CPU_VENDOR_MODEL} MATCHES .*M2N.*)
+set(LIBZ_INC "vendor/renesas/zlib/M2N/usr/include/")
+endif()
+
+# libz for i586
+if (${USER_CONF_TARGET_CPU_VENDOR_MODEL} MATCHES .*i586.*)
+SET(LIBZ_INC "vendor/x86/zlib/usr/include/")
+endif()
+

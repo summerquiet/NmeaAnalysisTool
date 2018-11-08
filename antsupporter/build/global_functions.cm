@@ -1,0 +1,494 @@
+#
+# Convert relative path into absolute path.
+#
+# @param RELPATH - value of the relative path
+# @param ABSPATH - name of the variable to store the absolute path
+#
+function (g_func_rel_2_abs_path RELPATH ABSPATH)
+    set (LOCAL_ABSPATH "")
+    if (EXISTS "${RELPATH}")
+        get_filename_component(LOCAL_ABSPATH "${RELPATH}" ABSOLUTE)
+    else (EXISTS "${USER_CONF_PROJECT_ROOT_DIR}/${RELPATH}")
+        get_filename_component(LOCAL_ABSPATH "${USER_CONF_PROJECT_ROOT_DIR}/${RELPATH}" ABSOLUTE)
+    endif (EXISTS "${RELPATH}")
+    set (${ABSPATH} "${LOCAL_ABSPATH}" PARENT_SCOPE)
+endfunction (g_func_rel_2_abs_path)
+
+#
+# Convert relative path in CFLAGS/CXXFLAGS into absolute path, since cmake and
+# subsequent make will run in different diretory than the initial make command
+# (we assume it runs in USER_CONF_PROJECT_ROOT_DIR) and will result in error.
+#
+function (g_func_normalize_compiler_flags CFLAGS)
+    set (LOCAL_CFLAG_LIST ${${CFLAGS}})
+    separate_arguments (LOCAL_CFLAG_LIST)
+
+    list (LENGTH LOCAL_CFLAG_LIST LOCAL_LIST_LENGTH)
+    if (${LOCAL_LIST_LENGTH} EQUAL 0)
+        return ()
+    endif (${LOCAL_LIST_LENGTH} EQUAL 0)
+
+    set (LOCAL_ABSPATH "")
+    set (LOCAL_ABS_CFLAGS "")
+    set (LOCAL_PATH_EXPECTED False)
+    foreach (ARG ${LOCAL_CFLAG_LIST})
+        if (LOCAL_PATH_EXPECTED)
+            g_func_rel_2_abs_path("${ARG}" LOCAL_ABSPATH)
+            set (LOCAL_ABS_CFLAGS "${LOCAL_ABS_CFLAGS} ${LOCAL_ABSPATH}")
+            set (LOCAL_PATH_EXPECTED False)
+        elseif ("${ARG}" STREQUAL "-I")
+            set (LOCAL_PATH_EXPECTED True)
+            set (LOCAL_ABS_CFLAGS "${LOCAL_ABS_CFLAGS} ${ARG}")
+        elseif ("${ARG}" MATCHES "-I.+")
+            string (SUBSTRING "${ARG}" 2 -1 ARG)
+            g_func_rel_2_abs_path("${ARG}" LOCAL_ABSPATH)
+            set (LOCAL_ABS_CFLAGS "${LOCAL_ABS_CFLAGS} -I${LOCAL_ABSPATH}")
+        elseif ("${ARG}" STREQUAL "-L")
+            set (LOCAL_PATH_EXPECTED True)
+            set (LOCAL_ABS_CFLAGS "${LOCAL_ABS_CFLAGS} ${ARG}")
+        elseif ("${ARG}" STREQUAL "-L.+")
+            string (SUBSTRING "${ARG}" 2 -1 ARG)
+            g_func_rel_2_abs_path("${ARG}" LOCAL_ABSPATH)
+            set (LOCAL_ABS_CFLAGS "${LOCAL_ABS_CFLAGS} -L${LOCAL_ABSPATH}")
+        elseif ("${ARG}" STREQUAL "-include")
+            set (LOCAL_PATH_EXPECTED True)
+            set (LOCAL_ABS_CFLAGS "${LOCAL_ABS_CFLAGS} ${ARG}")
+        elseif ("${ARG}" MATCHES "-include.+")
+            string (SUBSTRING "${ARG}" 8 -1 ARG)
+            g_func_rel_2_abs_path("${ARG}" LOCAL_ABSPATH)
+            set (LOCAL_ABS_CFLAGS "${LOCAL_ABS_CFLAGS} -include${LOCAL_ABSPATH}")
+        else ()
+            set (LOCAL_ABS_CFLAGS "${LOCAL_ABS_CFLAGS} ${ARG}")
+        endif (LOCAL_PATH_EXPECTED)
+    endforeach (ARG)
+
+    string (STRIP "${LOCAL_ABS_CFLAGS}" LOCAL_ABS_CFLAGS)
+    set (${CFLAGS} "${LOCAL_ABS_CFLAGS}" PARENT_SCOPE)
+endfunction (g_func_normalize_compiler_flags)
+
+macro (g_func_set name)
+    set (${name} ${ARGN})
+    set (${name} ${ARGN} PARENT_SCOPE)
+endmacro()
+
+MACRO( g_func_clear_private_var )
+    #MESSAGE(STATUS "${PRIVATE_MODULE_NAME} Entry")
+    SET(PRIVATE_MODULE_TYPE "")
+    SET(PRIVATE_MODULE_C_FLAGS "-D_LINUX")
+    SET(PRIVATE_MODULE_CXX_FLAGS "")
+    SET(PRIVATE_MODULE_LINK_FLAGS "")
+    SET(PRIVATE_MODULE_LINK_STATIC_LIBRARIES "")
+    SET(PRIVATE_MODULE_LINK_SHARED_LIBRARIES "")
+    SET(PRIVATE_MODULE_SRC_LIST "")
+    SET(PRIVATE_MODULE_INC_LIST "")
+    SET(PRIVATE_MODULE_ADDITIONAL_DEPENDENCIES "")
+ENDMACRO()
+
+MACRO(LIST_LENGTH var)
+  SET(entries)
+  FOREACH(e ${ARGN})
+    SET(entries "${entries}.")
+  ENDFOREACH(e)
+  STRING(LENGTH "${entries}" ${var})
+ENDMACRO(LIST_LENGTH)
+
+MACRO( g_func_inc_deps arg_moudel )
+    #MESSAGE("*********: inc_deps:" ${arg_moudel} "---" ${CMAKE_CURRENT_SOURCE_DIR})
+    STRING(STRIP "${arg_moudel}" arg_moudel)
+    IF ( arg_moudel )
+        IF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${arg_moudel}/CMakeLists.txt)
+            SET(PRIVATE_MODULE_NAME ${arg_moudel})
+            INCLUDE(${arg_moudel}/CMakeLists.txt)
+        ENDIF()
+    ENDIF()
+ENDMACRO()
+
+MACRO( g_func_parse_LDflags )
+    IF(USER_CONF_TARGET_PRODUCT MATCHES "android")
+        LIST_LENGTH(listlength ${PRIVATE_MODULE_LINK_FLAGS})
+        IF (listlength GREATER 0)
+            #MESSAGE(STATUS "---------- debug delete lpthread")
+            LIST(REMOVE_ITEM PRIVATE_MODULE_LINK_FLAGS "-lpthread" "-lrt")
+        ENDIF()
+        SET(PRIVATE_MODULE_LINK_FLAGS -lgnustl_shared ${PRIVATE_MODULE_LINK_FLAGS})
+    ENDIF()
+    FOREACH(LDflags ${PRIVATE_MODULE_LINK_FLAGS})
+        #MESSAGE(STATUS "---------- debug: lf:" ${LDflags})
+        STRING(STRIP "${LDflags}" LDflags)
+        STRING(LENGTH "${LDflags}" _strlength)
+        IF ( LDflags )
+            IF (NOT (_strlength LESS 2))
+                STRING(SUBSTRING "${LDflags}" 0 2 LINK_LIB_KEY_WORD)
+                IF (${LINK_LIB_KEY_WORD} MATCHES "-l")
+                    SET(PRIVATE_MODULE_LINK_LD_TARGETS ${PRIVATE_MODULE_LINK_LD_TARGETS} ${LDflags})
+                ELSE()
+                    SET(PRIVATE_MODULE_LD_FLAGS "${PRIVATE_MODULE_LD_FLAGS} ${LDflags}")
+                ENDIF()
+            ELSE()
+                SET(PRIVATE_MODULE_LD_FLAGS "${PRIVATE_MODULE_LD_FLAGS} ${LDflags}")
+            ENDIF()
+        ENDIF()
+    ENDFOREACH()
+ENDMACRO()
+
+MACRO( g_func_parse_compile_flags )
+    FOREACH(Cflags ${ARGN})
+        #MESSAGE(STATUS "---------- debug parse_Cflags:" ${Cflags})
+        STRING(STRIP "${Cflags}" Cflags)
+        STRING(LENGTH "${Cflags}" _strlength)
+        IF ( Cflags )
+            IF (NOT (_strlength LESS 2))
+                STRING(SUBSTRING "${Cflags}" 0 2 DEF_FLAG_KEY_WORD)
+                IF (${DEF_FLAG_KEY_WORD} MATCHES "-D")
+                    STRING(SUBSTRING "${Cflags}" 2 -1 Cflags)
+                    SET(PRIVATE_MODULE_DEFINITION_FLAGS ${PRIVATE_MODULE_DEFINITION_FLAGS} ${Cflags})
+                ELSE()
+                    SET(PRIVATE_MODULE_PARSED_COMPILE_FLAGS "${PRIVATE_MODULE_PARSED_COMPILE_FLAGS} ${Cflags}")
+                ENDIF()
+            ELSE()
+                SET(PRIVATE_MODULE_PARSED_COMPILE_FLAGS "${PRIVATE_MODULE_PARSED_COMPILE_FLAGS} ${Cflags}")
+            ENDIF()
+        ENDIF()
+    ENDFOREACH()
+ENDMACRO()
+
+
+MACRO( g_func_build_external_modules )
+STRING(REPLACE ";" " " NAVI_GLOBAL_DEP_EXTERNAL_MODULES "${NAVI_GLOBAL_DEP_EXTERNAL_MODULES}")
+FILE(WRITE "${USER_CONF_DEP_EXTERNAL_MODULES_FILE}" ${NAVI_GLOBAL_DEP_EXTERNAL_MODULES})
+SET(NAVI_GLOBAL_DEP_EXTERNAL_MODULES )
+ENDMACRO()
+
+function (g_func_build_module)
+    IF ((USER_CONF_TARGET_PRODUCT MATCHES "iOS") AND (PRIVATE_MODULE_NAME MATCHES "-test"))
+        RETURN()
+    ENDIF()
+
+    SET(PRIVATE_MODULE_PARSED_COMPILE_FLAGS)
+    SET(PRIVATE_MODULE_DEFINITION_FLAGS)
+    SET(PRIVATE_MODULE_LINK_SHARED_TARGETS)
+    SET(PRIVATE_MODULE_LINK_STATIC_TARGETS)
+    SET(PRIVATE_MODULE_LINK_LD_TARGETS)
+    SET(PRIVATE_MODULE_LD_FLAGS)
+    #MESSAGE(STATUS "---------- debug:" ${PRIVATE_MODULE_NAME} ${CMAKE_BUILD_TYPE})
+
+    #
+    # Force building static library for iOS even if dynamic library is requested
+    # (Apple AppStore does not allow dynamic library to be used).
+    #
+    IF (USER_CONF_TARGET_PRODUCT MATCHES "iOS")
+        IF (PRIVATE_MODULE_TYPE STREQUAL "SHARED")
+            SET(PRIVATE_MODULE_TYPE "STATIC")
+        ENDIF()
+
+        SET(PRIVATE_MODULE_LINK_STATIC_LIBRARIES ${PRIVATE_MODULE_LINK_STATIC_LIBRARIES} ${PRIVATE_MODULE_LINK_SHARED_LIBRARIES})
+        SET(PRIVATE_MODULE_LINK_SHARED_LIBRARIES )
+    ENDIF()
+
+    #
+    # Normalize dependent static/shared libraries, they should be either
+    # a cmake target name, or full path to the library.
+    #
+    FOREACH(sharedlib ${PRIVATE_MODULE_LINK_SHARED_LIBRARIES})
+        STRING(STRIP "${sharedlib}" sharedlib)
+        IF (sharedlib)
+            IF((EXISTS ${sharedlib}) OR (TARGET ${sharedlib}))
+                # existing libs
+                SET(PRIVATE_MODULE_LINK_SHARED_TARGETS ${PRIVATE_MODULE_LINK_SHARED_TARGETS} "${sharedlib}")
+                #message (STATUS "---------- debug .so :  ${sharedlib}")
+            ELSE()
+                # external modules
+                IF(sharedlib MATCHES \\${CMAKE_SHARED_LIBRARY_SUFFIX})
+                    SET(PRIVATE_MODULE_LINK_SHARED_TARGETS ${PRIVATE_MODULE_LINK_SHARED_TARGETS} "${EXTERNAL_SHARED_LIB_PATH}/${sharedlib}")
+                    IF(EXISTS "${USER_CONF_PROJECT_ROOT_DIR}/out/UNNOTICE-TARGET-STATIC_LIBRARIES")
+                        g_func_set (NAVI_GLOBAL_DEP_EXTERNAL_MODULES ${NAVI_GLOBAL_DEP_EXTERNAL_MODULES} "${USER_CONF_TARGET_OUT_INTERMEDIATES}/lib/${sharedlib}")
+                    ELSE()
+                        g_func_set (NAVI_GLOBAL_DEP_EXTERNAL_MODULES ${NAVI_GLOBAL_DEP_EXTERNAL_MODULES} "${USER_CONF_TARGET_OUT_INTERMEDIATES}/lib/${sharedlib}")
+                    ENDIF()
+                ELSE()
+                    SET(PRIVATE_MODULE_LINK_SHARED_TARGETS ${PRIVATE_MODULE_LINK_SHARED_TARGETS} "${EXTERNAL_SHARED_LIB_PATH}/${sharedlib}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+                    IF(EXISTS "${USER_CONF_PROJECT_ROOT_DIR}/out/UNNOTICE-TARGET-STATIC_LIBRARIES")
+                        g_func_set (NAVI_GLOBAL_DEP_EXTERNAL_MODULES ${NAVI_GLOBAL_DEP_EXTERNAL_MODULES} "${USER_CONF_TARGET_OUT_INTERMEDIATES}/lib/${sharedlib}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+                    ELSE()
+                         g_func_set (NAVI_GLOBAL_DEP_EXTERNAL_MODULES ${NAVI_GLOBAL_DEP_EXTERNAL_MODULES} "${USER_CONF_TARGET_OUT_INTERMEDIATES}/lib/${sharedlib}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+                    ENDIF()
+                ENDIF()
+            ENDIF()
+        ENDIF()
+    ENDFOREACH()
+    FOREACH(staticlib ${PRIVATE_MODULE_LINK_STATIC_LIBRARIES})
+        STRING(STRIP "${staticlib}" staticlib)
+        IF (staticlib)
+            IF((EXISTS ${staticlib}) OR (TARGET ${staticlib}))
+                #existing libs
+                SET(PRIVATE_MODULE_LINK_STATIC_TARGETS ${PRIVATE_MODULE_LINK_STATIC_TARGETS} "${staticlib}")
+                #message (STATUS "---------- debug .a : ${staticlib}")
+            ELSEIF(staticlib MATCHES "libgtest|libgmock")
+                g_func_set (NAVI_GLOBAL_DEP_EXTERNAL_MODULES ${NAVI_GLOBAL_DEP_EXTERNAL_MODULES} "${USER_CONF_TARGET_OUT_INTERMEDIATES}/STATIC_LIBRARIES/${staticlib}_intermediates/${staticlib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+                SET(PRIVATE_MODULE_LINK_STATIC_TARGETS ${PRIVATE_MODULE_LINK_STATIC_TARGETS} "${EXTERNAL_STATIC_LIB_PATH}/${staticlib}_intermediates/${staticlib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+            ELSE()
+                # external libs
+                IF(staticlib MATCHES \\${CMAKE_STATIC_LIBRARY_SUFFIX})
+                    SET(PRIVATE_MODULE_LINK_STATIC_TARGETS ${PRIVATE_MODULE_LINK_STATIC_TARGETS} "${EXTERNAL_STATIC_LIB_PATH}/${staticlib}_intermediates/${staticlib}")
+                    IF(EXISTS "${USER_CONF_PROJECT_ROOT_DIR}/out/UNNOTICE-TARGET-STATIC_LIBRARIES")
+                        g_func_set (NAVI_GLOBAL_DEP_EXTERNAL_MODULES ${NAVI_GLOBAL_DEP_EXTERNAL_MODULES} "${USER_CONFEXTERNAL_STATIC_LIB_PATH_TARGET_OUT_INTERMEDIATES}/STATIC_LIBRARIES/${staticlib}_intermediates/${staticlib}")
+                    ELSE()
+                        g_func_set (NAVI_GLOBAL_DEP_EXTERNAL_MODULES ${NAVI_GLOBAL_DEP_EXTERNAL_MODULES} "${staticlib}")
+                    ENDIF()
+                ELSE()
+                    SET(PRIVATE_MODULE_LINK_STATIC_TARGETS ${PRIVATE_MODULE_LINK_STATIC_TARGETS} "${EXTERNAL_STATIC_LIB_PATH}/${staticlib}_intermediates/${staticlib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+                    IF(EXISTS "${USER_CONF_PROJECT_ROOT_DIR}/out/UNNOTICE-TARGET-STATIC_LIBRARIES")
+                        g_func_set (NAVI_GLOBAL_DEP_EXTERNAL_MODULES ${NAVI_GLOBAL_DEP_EXTERNAL_MODULES} "${USER_CONF_TARGET_OUT_INTERMEDIATES}/STATIC_LIBRARIES/${staticlib}_intermediates/${staticlib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+                    ELSE()
+                        g_func_set (NAVI_GLOBAL_DEP_EXTERNAL_MODULES ${NAVI_GLOBAL_DEP_EXTERNAL_MODULES} "${staticlib}")
+                    ENDIF()
+                ENDIF()
+                #MESSAGE(STATUS "---------- debug external :  ${staticlib}")
+            ENDIF()
+        ENDIF()
+    ENDFOREACH()
+
+    # Check the additional depedences
+    FOREACH(add_dep ${PRIVATE_MODULE_ADDITIONAL_DEPENDENCIES})
+        STRING(STRIP "${add_dep}" add_dep)
+        IF (add_dep)
+            g_func_set (NAVI_GLOBAL_ADDITIONAL_DEPENDENCIES ${NAVI_GLOBAL_ADDITIONAL_DEPENDENCIES} "${EXTERNAL_STATIC_LIB_PATH}/${staticlib}_intermediates/${staticlib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        ENDIF()
+    ENDFOREACH()
+
+    #
+    # Special treatment on unit test projects, MUST be put before [g_func_parse_LDflags]
+    #
+    IF (PRIVATE_MODULE_NAME MATCHES "-test")
+        SET(PRIVATE_MODULE_EXCLUDE_PARAM "EXCLUDE_FROM_ALL")
+        string (REGEX REPLACE "-test$" "" PRIVATE_NAME "${PRIVATE_MODULE_NAME}")
+        string (REGEX REPLACE "[^a-zA-Z0-9_]" "_" PRIVATE_NAME "${PRIVATE_NAME}")
+        set (PRIVATE_MODULE_C_FLAGS ${PRIVATE_MODULE_C_FLAGS} -DCOMP_OPT_GTEST_MODE "-D${PRIVATE_NAME}_EXPORTS")
+        if (MSVC)
+            set (PRIVATE_MODULE_CXX_FLAGS ${PRIVATE_MODULE_CXX_FLAGS} -Dprotected=public -Dprivate=public)
+        else ()
+            set (PRIVATE_MODULE_C_FLAGS ${PRIVATE_MODULE_C_FLAGS} -fprofile-arcs -ftest-coverage)
+            set (PRIVATE_MODULE_CXX_FLAGS ${PRIVATE_MODULE_CXX_FLAGS} -fprofile-arcs -ftest-coverage -O1 -fno-exceptions -fno-access-control)
+            set (PRIVATE_MODULE_LINK_FLAGS ${PRIVATE_MODULE_LINK_FLAGS} -fprofile-arcs -ftest-coverage)
+            if(PRIVATE_MODULE_NAME MATCHES "libSearch-navi-test")
+                set (PRIVATE_MODULE_CXX_FLAGS ${PRIVATE_MODULE_CXX_FLAGS} -O0)
+            endif ()
+            if(PRIVATE_MODULE_NAME MATCHES "vr-de-suntec-navi-test")
+                set (PRIVATE_MODULE_CXX_FLAGS ${PRIVATE_MODULE_CXX_FLAGS} -fexceptions)
+            endif ()
+        endif ()
+    ELSE()
+        SET(PRIVATE_MODULE_EXCLUDE_PARAM)
+    ENDIF()
+
+    g_func_parse_LDflags()
+    #MESSAGE(STATUS "---------- debug: ${PRIVATE_MODULE_NAME} LINK:${PRIVATE_MODULE_LINK_LD_TARGETS}")
+
+    #
+    # Create new cmake target
+    #
+    SET(PRIVATE_MODULE_TARGET_NAME ${PRIVATE_MODULE_NAME})
+    if ("${PRIVATE_MODULE_TYPE}" STREQUAL "SHARED")
+        string(REGEX REPLACE "^${CMAKE_SHARED_LIBRARY_PREFIX}" "" PRIVATE_MODULE_NAME "${PRIVATE_MODULE_NAME}")
+    elseif ("${PRIVATE_MODULE_TYPE}" STREQUAL "STATIC")
+        string(REGEX REPLACE "^${CMAKE_STATIC_LIBRARY_PREFIX}" "" PRIVATE_MODULE_NAME "${PRIVATE_MODULE_NAME}")
+    endif ()
+    IF (PRIVATE_MODULE_TYPE STREQUAL "STATIC")
+
+        # Build a static lib
+        LIST_LENGTH(listlength ${PRIVATE_MODULE_SRC_LIST})
+        IF (listlength EQUAL 0)
+            ADD_LIBRARY(${PRIVATE_MODULE_TARGET_NAME} ${PRIVATE_MODULE_TYPE} ${PRIVATE_MODULE_EXCLUDE_PARAM} "")
+        ELSE()
+            ADD_LIBRARY(${PRIVATE_MODULE_TARGET_NAME} ${PRIVATE_MODULE_TYPE} ${PRIVATE_MODULE_EXCLUDE_PARAM} ${PRIVATE_MODULE_SRC_LIST})
+        ENDIF()
+        set_target_properties(${PRIVATE_MODULE_TARGET_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${NAVI_STATIC_LIB_OUTPUT_PATH})
+        set_target_properties(${PRIVATE_MODULE_TARGET_NAME} PROPERTIES OUTPUT_NAME ${PRIVATE_MODULE_NAME})
+
+    ELSEIF (PRIVATE_MODULE_TYPE STREQUAL "SHARED")
+
+        # Build a shared lib
+        LIST_LENGTH(listlength ${PRIVATE_MODULE_SRC_LIST})
+        IF (listlength EQUAL 0)
+            ADD_LIBRARY(${PRIVATE_MODULE_TARGET_NAME} ${PRIVATE_MODULE_TYPE} ${PRIVATE_MODULE_EXCLUDE_PARAM} "")
+        ELSE()
+            ADD_LIBRARY(${PRIVATE_MODULE_TARGET_NAME} ${PRIVATE_MODULE_TYPE} ${PRIVATE_MODULE_EXCLUDE_PARAM} ${PRIVATE_MODULE_SRC_LIST})
+        ENDIF()
+        if (WIN32)
+            # output directory of the ".lib" and ".dll" file.
+            set_target_properties(${PRIVATE_MODULE_TARGET_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${NAVI_SHARED_LIB_OUTPUT_PATH})
+            set_target_properties(${PRIVATE_MODULE_TARGET_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${NAVI_SHARED_LIB_OUTPUT_PATH})
+        else ()
+            set_target_properties(${PRIVATE_MODULE_TARGET_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${NAVI_SHARED_LIB_OUTPUT_PATH})
+        endif ()
+        set_target_properties(${PRIVATE_MODULE_TARGET_NAME} PROPERTIES OUTPUT_NAME ${PRIVATE_MODULE_NAME})
+
+    ELSEIF (PRIVATE_MODULE_TYPE STREQUAL "EXECUTABLE")
+
+        # Build a executable obj
+        LIST_LENGTH(listlength ${PRIVATE_MODULE_SRC_LIST})
+        IF (listlength EQUAL 0)
+            ADD_EXECUTABLE(${PRIVATE_MODULE_TARGET_NAME} ${PRIVATE_MODULE_EXCLUDE_PARAM} "")
+        ELSE()
+            ADD_EXECUTABLE(${PRIVATE_MODULE_TARGET_NAME} ${PRIVATE_MODULE_EXCLUDE_PARAM} ${PRIVATE_MODULE_SRC_LIST})
+        ENDIF()
+        set_target_properties(${PRIVATE_MODULE_TARGET_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${NAVI_BIN_OUTPUT_PATH})
+        set_target_properties(${PRIVATE_MODULE_TARGET_NAME} PROPERTIES OUTPUT_NAME ${PRIVATE_MODULE_NAME})
+
+    ENDIF()
+
+    #message (STATUS "MESSAGE: ${PRIVATE_MODULE_NAME} ${PRIVATE_MODULE_TYPE}")
+    #message (STATUS "MESSAGE: ${PRIVATE_MODULE_NAME} static ${PRIVATE_MODULE_LINK_STATIC_TARGETS}")
+    #message (STATUS "MESSAGE: ${PRIVATE_MODULE_NAME} LD ${PRIVATE_MODULE_LINK_LD_TARGETS}")
+    #message (STATUS "MESSAGE: ${PRIVATE_MODULE_TARGET_NAME} shared ${PRIVATE_MODULE_LINK_SHARED_TARGETS}")
+
+    TARGET_LINK_LIBRARIES(${PRIVATE_MODULE_TARGET_NAME} ${PRIVATE_MODULE_LINK_STATIC_TARGETS} ${PRIVATE_MODULE_LINK_LD_TARGETS} ${PRIVATE_MODULE_LINK_SHARED_TARGETS} )
+
+    #
+    # Move all -D define flags to variable [PRIVATE_MODULE_DEFINITION_FLAGS] and
+    # all other flags to varaible [PRIVATE_MODULE_PARSED_COMPILE_FLAGS]
+    #
+    g_func_parse_compile_flags(${PRIVATE_MODULE_C_FLAGS})
+    g_func_parse_compile_flags(${PRIVATE_MODULE_CXX_FLAGS})
+
+    SET_PROPERTY(TARGET ${PRIVATE_MODULE_TARGET_NAME} APPEND PROPERTY COMPILE_FLAGS "${PRIVATE_MODULE_PARSED_COMPILE_FLAGS}")
+
+    SET_PROPERTY(TARGET ${PRIVATE_MODULE_TARGET_NAME} APPEND PROPERTY COMPILE_DEFINITIONS ${PRIVATE_MODULE_DEFINITION_FLAGS})
+
+    STRING(STRIP "${PRIVATE_MODULE_LD_FLAGS}" PRIVATE_MODULE_LD_FLAGS)
+    SET_TARGET_PROPERTIES(${PRIVATE_MODULE_TARGET_NAME} PROPERTIES LINK_FLAGS "${USER_CONF_GLOBAL_LINKER_FLAGS} ${PRIVATE_MODULE_LD_FLAGS}")
+    SET_PROPERTY(TARGET ${PRIVATE_MODULE_TARGET_NAME} APPEND PROPERTY INCLUDE_DIRECTORIES ${PRIVATE_MODULE_INC_LIST})
+
+    #add dependencies for current module
+    SET(PRIVATE_MODULE_DEP_LIBS ${PRIVATE_MODULE_LINK_STATIC_LIBRARIES} ${PRIVATE_MODULE_LINK_SHARED_LIBRARIES})
+
+    LIST_LENGTH(listlength ${PRIVATE_MODULE_DEP_LIBS})
+    IF (listlength GREATER 0)
+        ADD_DEPENDENCIES(${PRIVATE_MODULE_TARGET_NAME} ${PRIVATE_MODULE_DEP_LIBS})
+    ENDIF()
+
+endfunction (g_func_build_module)
+
+MACRO( g_func_import_module )
+
+    IF (PRIVATE_MODULE_NAME MATCHES "-test")
+        SET(PRIVATE_MODULE_EXCLUDE_PARAM "EXCLUDE_FROM_ALL")
+    ELSE()
+        SET(PRIVATE_MODULE_EXCLUDE_PARAM)
+    ENDIF()
+
+    SET(PRIVATE_MODULE_TARGET_NAME ${PRIVATE_MODULE_NAME})
+    IF (PRIVATE_MODULE_TYPE STREQUAL "EXECUTABLE")
+        # Build a executable obj
+        MESSAGE(SEND_ERROR "Error: The import module ${PRIVATE_MODULE_NAME} is EXECUTABLE!")
+    ELSE ()
+        # Build a lib
+        ADD_LIBRARY(${PRIVATE_MODULE_TARGET_NAME} ${PRIVATE_MODULE_TYPE} IMPORTED)
+    ENDIF()
+
+    SET_PROPERTY(TARGET ${PRIVATE_MODULE_TARGET_NAME} PROPERTY IMPORTED_LOCATION ${PRIVATE_MODULE_IMPORT_PATH})
+
+    IF(NOT(PRIVATE_MODULE_TARGET_NAME STREQUAL ${PRIVATE_MODULE_NAME}))
+        IF(NOT TARGET ${PRIVATE_MODULE_NAME})
+            ADD_CUSTOM_TARGET(${PRIVATE_MODULE_NAME} DEPENDS ${PRIVATE_MODULE_TARGET_NAME})
+        ELSE()
+            ADD_DEPENDENCIES(${PRIVATE_MODULE_NAME} ${PRIVATE_MODULE_TARGET_NAME})
+        ENDIF()
+    ENDIF()
+
+ENDMACRO()
+
+MACRO( g_func_import_and_install_module )
+
+    IF (PRIVATE_MODULE_NAME MATCHES "-test")
+        SET(PRIVATE_MODULE_EXCLUDE_PARAM "EXCLUDE_FROM_ALL")
+    ELSE()
+        SET(PRIVATE_MODULE_EXCLUDE_PARAM)
+    ENDIF()
+
+    SET(NAVI_TEMPVAR_STATICSHAREDBIN_OUTPUT_PATH "")
+
+    SET(PRIVATE_MODULE_TARGET_NAME ${PRIVATE_MODULE_NAME})
+    IF (PRIVATE_MODULE_TYPE STREQUAL "STATIC")
+        # Build a static lib
+        SET(PRIVATE_MODULE_INSTALL_DEST_PATH ${NAVI_STATIC_LIB_OUTPUT_PATH}/${PRIVATE_MODULE_TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
+        ADD_LIBRARY(${PRIVATE_MODULE_TARGET_NAME} ${PRIVATE_MODULE_TYPE} IMPORTED)
+        SET(NAVI_TEMPVAR_STATICSHAREDBIN_OUTPUT_PATH ${NAVI_STATIC_LIB_OUTPUT_PATH})
+    ELSEIF (PRIVATE_MODULE_TYPE STREQUAL "SHARED")
+        # Build a shared lib
+        SET(PRIVATE_MODULE_INSTALL_DEST_PATH ${NAVI_SHARED_LIB_OUTPUT_PATH}/${PRIVATE_MODULE_TARGET_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX})
+        ADD_LIBRARY(${PRIVATE_MODULE_TARGET_NAME} ${PRIVATE_MODULE_TYPE} IMPORTED)
+        SET(NAVI_TEMPVAR_STATICSHAREDBIN_OUTPUT_PATH ${NAVI_SHARED_LIB_OUTPUT_PATH})
+    ELSEIF (PRIVATE_MODULE_TYPE STREQUAL "EXECUTABLE")
+        # Build a executable obj
+        SET(PRIVATE_MODULE_INSTALL_DEST_PATH ${NAVI_BIN_OUTPUT_PATH}/${PRIVATE_MODULE_TARGET_NAME})
+        SET(NAVI_TEMPVAR_STATICSHAREDBIN_OUTPUT_PATH ${NAVI_BIN_OUTPUT_PATH})
+    ENDIF()
+
+    ADD_CUSTOM_TARGET(INSTALL_${PRIVATE_MODULE_TARGET_NAME} COMMAND echo 'Installing: ${PRIVATE_MODULE_IMPORT_PATH}=>${PRIVATE_MODULE_INSTALL_DEST_PATH}' COMMAND mkdir -p ${NAVI_TEMPVAR_STATICSHAREDBIN_OUTPUT_PATH} COMMAND cp -f ${PRIVATE_MODULE_IMPORT_PATH} ${PRIVATE_MODULE_INSTALL_DEST_PATH})
+
+    ADD_DEPENDENCIES(${PRIVATE_MODULE_TARGET_NAME} INSTALL_${PRIVATE_MODULE_TARGET_NAME})
+
+    SET_PROPERTY(TARGET ${PRIVATE_MODULE_TARGET_NAME} PROPERTY IMPORTED_LOCATION ${PRIVATE_MODULE_IMPORT_PATH})
+
+    IF(NOT(PRIVATE_MODULE_TARGET_NAME STREQUAL ${PRIVATE_MODULE_NAME}))
+        IF(NOT TARGET ${PRIVATE_MODULE_NAME})
+            ADD_CUSTOM_TARGET(${PRIVATE_MODULE_NAME} DEPENDS ${PRIVATE_MODULE_TARGET_NAME})
+        ELSE()
+            ADD_DEPENDENCIES(${PRIVATE_MODULE_NAME} ${PRIVATE_MODULE_TARGET_NAME})
+        ENDIF()
+    ENDIF()
+
+ENDMACRO()
+
+MACRO(source_group_by_dir source_files current_dir)
+    set(sgbd_cur_dir ${current_dir})
+    foreach(sgbd_file ${${source_files}})
+        string(REGEX REPLACE ${sgbd_cur_dir}/\(.*\) \\1 sgbd_fpath ${sgbd_file})
+        string(COMPARE EQUAL ${sgbd_file} ${sgbd_cur_dir}/${sgbd_fpath} sgbd_filter_OK)
+        string(REGEX REPLACE "\(.*\)/.*" \\1 sgbd_group_name ${sgbd_fpath})
+        string(COMPARE EQUAL ${sgbd_fpath} ${sgbd_group_name} sgbd_nogroup)
+        string(REPLACE "/" "\\" sgbd_group_name ${sgbd_group_name})
+
+        if(sgbd_nogroup)
+            set(sgbd_group_name "\\")
+        endif(sgbd_nogroup)
+
+        if(sgbd_filter_OK)
+            source_group(${sgbd_group_name} FILES ${sgbd_file})
+        endif(sgbd_filter_OK)
+
+    endforeach(sgbd_file)
+ENDMACRO(source_group_by_dir)
+
+#
+# Add headfiles to SRC_LIST
+#
+# @param head_files[out]    - name of the variable to hold the list of header files (appended to)
+# @param inc_list[in]       - directories to search header files.
+# @param current_dir[in]    - only files within this directory will be appended to [head_files]
+#
+function (add_headfiles_to_srclist_by_dir head_files inc_list current_dir)
+    set (hfbd_cur_dir ${current_dir})
+    set (HFBD_ALL_HEADFILES_LIST "")
+
+    foreach (file ${${head_files}})
+        get_filename_component(name ${file} NAME_WE)
+        get_filename_component(dir ${file} PATH)
+        if (EXISTS "${dir}/${name}.h")
+            set (HFBD_ALL_HEADFILES_LIST ${HFBD_ALL_HEADFILES_LIST} "${dir}/${name}.h")
+        else ()
+            foreach (dir ${${inc_list}})
+                string (FIND "${dir}" "${hfbd_cur_dir}" hfbd_filter_OK)
+                if ("${hfbd_filter_OK}" EQUAL "0")
+                    if (EXISTS "${dir}/${name}.h")
+                        set (HFBD_ALL_HEADFILES_LIST ${HFBD_ALL_HEADFILES_LIST} "${dir}/${name}.h")
+                        break ()
+                    endif ()
+                endif ()
+            endforeach (dir)
+        endif ()
+    endforeach (file)
+
+    set (${head_files} ${${head_files}} ${HFBD_ALL_HEADFILES_LIST} PARENT_SCOPE)
+endfunction (add_headfiles_to_srclist_by_dir)

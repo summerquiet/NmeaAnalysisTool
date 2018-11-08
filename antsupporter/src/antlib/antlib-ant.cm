@@ -1,0 +1,199 @@
+#
+# Global Configurations of eventsys:
+#
+#     PRIVATE_EVENTSYS_SOCKET:
+#           - <other>: use ZMQ socket
+#
+set (PRIVATE_COMMONLIB_SOCKET "zmq")
+
+################################################################################
+# COMPILER OPTIONS
+################################################################################
+SET(PRIVATE_COMLIB_C_FLAGS ${NAVI_GLOBAL_CFLAGS} -fvisibility=hidden)
+SET(PRIVATE_COMLIB_CXX_FLAGS ${NAVI_GLOBAL_CPPFLAGS} -fvisibility=hidden)
+
+# Search path of external header files.
+SET(PRIVATE_COMLIB_INC_LIST
+    #"${USER_CONF_LIB_SRC_DIR}/3rdParty/tinyxml/publicinc"
+    #"${USER_CONF_LIB_SRC_DIR}/memorytracker/include"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/include"
+    "${USER_CONF_LIB_SRC_DIR}/antlib"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/error"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/log"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/memory"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/publiclib"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/standard"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/string"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/thread")
+
+
+################################################################################
+# EXTERNAL LIBRARY DEPENDENCIES
+################################################################################
+INCLUDE(FindThreads)
+SET(PRIVATE_COMLIB_LINK_FLAGS ${CMAKE_THREAD_LIBS_INIT} "-lm" )
+IF(NUTSHELL AND (NOT USER_CONF_TARGET_PRODUCT MATCHES "purenavi"))
+    SET(PRIVATE_COMLIB_LINK_FLAGS ${PRIVATE_COMLIB_LINK_FLAGS} "-llog")
+ENDIF(NUTSHELL AND (NOT USER_CONF_TARGET_PRODUCT MATCHES "purenavi"))
+IF(UNIX)
+    IF(APPLE)
+        SET(PRIVATE_COMLIB_LINK_FLAGS ${PRIVATE_COMLIB_LINK_FLAGS}
+        "-liconv"
+        "-framework Foundation"
+        )
+    ELSE(APPLE)
+        SET(PRIVATE_COMLIB_LINK_FLAGS ${PRIVATE_COMLIB_LINK_FLAGS}
+        "-lrt"
+        )
+    ENDIF(APPLE)
+ENDIF(UNIX)
+SET(PRIVATE_COMLIB_LINK_STATIC_LIBRARIES "")
+SET(PRIVATE_COMLIB_LINK_SHARED_LIBRARIES
+    #"libmemorytracker-ant"
+    )
+IF (USER_CONF_TARGET_PRODUCT MATCHES "android")
+    SET(PRIVATE_COMLIB_LINK_SHARED_LIBRARIES ${PRIVATE_COMLIB_LINK_SHARED_LIBRARIES}
+        )
+ELSEIF (USER_CONF_TARGET_PRODUCT MATCHES "purenavi")
+    SET(PRIVATE_COMLIB_LINK_SHARED_LIBRARIES ${PRIVATE_COMLIB_LINK_SHARED_LIBRARIES}
+        )
+ELSE ()
+    IF (CMAKE_HOST_UNIX OR (NOT CMAKE_HOST_WIN32))
+        SET(PRIVATE_COMLIB_LINK_SHARED_LIBRARIES ${PRIVATE_COMLIB_LINK_SHARED_LIBRARIES}
+            ""
+            )
+    ENDIF (CMAKE_HOST_UNIX OR (NOT CMAKE_HOST_WIN32))
+    IF (NUTSHELL)
+        SET(PRIVATE_COMLIB_LINK_SHARED_LIBRARIES ${PRIVATE_COMLIB_LINK_SHARED_LIBRARIES}
+            ""
+            )
+    ENDIF (NUTSHELL)
+ENDIF ()
+
+set (PRIVATE_COMLIB_C_FLAGS ${PRIVATE_COMLIB_C_FLAGS} "-DANT_USE_LIB_ZMQ=1")
+set (PRIVATE_COMLIB_CXX_FLAGS ${PRIVATE_COMLIB_CXX_FLAGS} "-DANT_USE_LIB_ZMQ=1")
+set (PRIVATE_COMLIB_INC_LIST ${PRIVATE_COMLIB_INC_LIST}
+    "${USER_CONF_LIB_SRC_DIR}/3rdParty/zeromq/include"
+    )
+set (PRIVATE_COMLIB_LINK_STATIC_LIBRARIES ${PRIVATE_COMLIB_LINK_STATIC_LIBRARIES}
+    "libzeromq-ant"
+    )
+
+################################################################################
+# DEFINITION OF GENERATED FILES
+################################################################################
+# None
+
+
+################################################################################
+# SOURCE LIST
+################################################################################
+SET(PRIVATE_COMLIB_SRC_LIST
+    "${USER_CONF_LIB_SRC_DIR}/antlib/stdafx.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/common/Ant_Object.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/error/Ant_ErrorCore.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/error/Ant_Error.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_AbstractFileEngine.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_Dir.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_DirImpl.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_File.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_FileImpl.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_FileInfo.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_FileInfoImpl.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_FileLog.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_NormalFileEngine.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_Path.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_PathImpl.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_PathParser.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_FileDef.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/log/Ant_Log.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/log/Ant_LogControl.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/log/Ant_LogImpl.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/math/Ant_Hypo.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/math/Ant_stTrigono.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/math/Ant_Trigono.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/memory/Ant_HeapMemory.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/memory/Ant_Memory.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/memory/Ant_ProcSharedMemory.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/memory/Ant_VolatileMemory.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/socket/Ant_AbstractDataBlock.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/socket/Ant_AbstractSocket.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/socket/Ant_SocketLog.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/socket/Ant_SocketContext.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/socket/Ant_Socket.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/socket/Ant_SocketImpl_ZMQ.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/socket/Ant_AbstractSocketPoller.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/socket/Ant_SocketPoller.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/socket/Ant_SocketPollerImpl_Base.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/socket/Ant_SocketPollerImpl_ZMQ.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/standard/Ant_AutoSync.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/standard/Ant_AutoProcSync.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/standard/Ant_Base64.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/standard/Ant_Debug.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/standard/Ant_NewTypesDefine.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/standard/Ant_SyncObj.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/standard/Ant_Time.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/standard/Ant_UseCounter.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/standard/Ant_WaitObj.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/string/Ant_Code.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/string/Ant_Converter.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/string/Ant_String.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_ThreadBase.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_Thread.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_ThreadKey.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_ThreadSystem.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_ThreadSystemIF.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_Timer.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/utility/Ant_ReverseByteData.cpp"
+    "${USER_CONF_LIB_SRC_DIR}/antlib/utility/Ant_SortLibrary.cpp"
+    )
+IF (CMAKE_HOST_WIN32 AND (NOT CMAKE_HOST_UNIX))
+    SET(PRIVATE_COMLIB_SRC_LIST ${PRIVATE_COMLIB_SRC_LIST}
+        "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_NormalFileEngine_Win.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_ThreadWin.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_TimerManager_Win.cpp"
+        )
+ELSEIF (CMAKE_HOST_APPLE)
+    SET(PRIVATE_COMLIB_SRC_LIST ${PRIVATE_COMLIB_SRC_LIST}
+        "${USER_CONF_LIB_SRC_DIR}/antlib/string/Ant_Converter_IPhone.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_NormalFileEngine_Unix.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_ThreadMac.mm"
+        "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_ThreadUnix.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_TimerManager_Unix.cpp"
+        )
+ELSE ()
+    SET(PRIVATE_COMLIB_SRC_LIST ${PRIVATE_COMLIB_SRC_LIST}
+        "${USER_CONF_LIB_SRC_DIR}/antlib/string/Ant_Converter_Android.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/antlib/file/Ant_NormalFileEngine_Unix.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_ThreadUnix.cpp"
+        "${USER_CONF_LIB_SRC_DIR}/antlib/thread/Ant_TimerManager_Unix.cpp"
+        )
+ENDIF ()
+
+
+################################################################################
+# TARGETS
+################################################################################
+# Clear the private var
+g_func_clear_private_var()
+
+SET(PRIVATE_MODULE_NAME libantlib-ant)
+
+PROJECT (${PRIVATE_MODULE_NAME})
+SET(PRIVATE_MODULE_TYPE "SHARED")
+
+SET(PRIVATE_MODULE_C_FLAGS ${PRIVATE_COMLIB_C_FLAGS})
+SET(PRIVATE_MODULE_CXX_FLAGS ${PRIVATE_COMLIB_CXX_FLAGS})
+SET(PRIVATE_MODULE_LINK_FLAGS ${PRIVATE_COMLIB_LINK_FLAGS})
+SET(PRIVATE_MODULE_LINK_STATIC_LIBRARIES ${PRIVATE_COMLIB_LINK_STATIC_LIBRARIES})
+SET(PRIVATE_MODULE_LINK_SHARED_LIBRARIES ${PRIVATE_COMLIB_LINK_SHARED_LIBRARIES})
+
+SET(PRIVATE_MODULE_INC_LIST ${PRIVATE_COMLIB_INC_LIST})
+SET(PRIVATE_MODULE_SRC_LIST ${PRIVATE_COMLIB_SRC_LIST})
+
+# add headfiles
+add_headfiles_to_srclist_by_dir(PRIVATE_MODULE_SRC_LIST PRIVATE_MODULE_INC_LIST "${USER_CONF_LIB_SRC_DIR}/antlib/include")
+
+# Build this module
+g_func_build_module()
